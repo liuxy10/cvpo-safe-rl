@@ -11,5 +11,5 @@ wget https://www.roboti.us/file/mjkey.txt
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:~/.mujoco/mujoco200/bin
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so
-echo "export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:~/.mujoco/mujoco200/bin" >> ~/.bashrc
-echo "export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so" >> ~/.bashrc
+# echo "export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:~/.mujoco/mujoco200/bin" >> ~/.bashrc
+# echo "export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so" >> ~/.bashrc

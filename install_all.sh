@@ -2,10 +2,10 @@
 cd envs/safety-gym
 bash setup_mujoco.sh
 source ~/.bashrc
-pip install -e .
+python -m pip install -e .
 cd ../..
-pip install -r requirement.txt
-pip install -e .
+python -m pip install -r requirement.txt
+python -m pip install -e .
 
 echo "********************************************************"
 echo "********************************************************"
