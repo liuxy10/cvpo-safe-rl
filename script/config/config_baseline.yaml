@@ -43,14 +43,14 @@ batch_size: &BATCH_SIZE 300
 buffer_size: &BUFFER_SIZE 20000
 
 ###################### safe RL algos common configs #############
-cost_limit: &COST_LIM 20
+cost_limit: &COST_LIM 10
 
 use_cost_decay: &USE_DECAY False
 cost_start: &COST_START 100
 cost_end: &COST_END 5
 decay_epoch: &DECAY_EPOCH 200
 
-KP: &K_P 0.1
+KP: &K_P 1.0
 KI: &K_I 0.003
 KD: &K_D 0.001
 
@@ -83,6 +83,9 @@ sac_lag: &SAC
         warmup_steps: *WARMUP_STEPS
         batch_size: *BATCH_SIZE
         buffer_size: *BUFFER_SIZE
+
+#SAC Lagrangian + Jump Start config
+sac_lag_jp: *SAC
 
 # SAC policy config
 sac: *SAC

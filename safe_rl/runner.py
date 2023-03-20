@@ -10,7 +10,7 @@ from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lag
 from safe_rl.util.logger import EpochLogger, setup_logger_kwargs
 from safe_rl.util.run_util import load_config, setup_eval_configs
 from safe_rl.util.torch_util import export_device_env_variable, seed_torch
-from safe_rl.worker import OffPolicyWorker, OnPolicyWorker
+from safe_rl.worker import OffPolicyWorker, OnPolicyWorker, JumpStartOffPolicyWorker
 
 try:
     import bullet_safety_gym
@@ -19,6 +19,7 @@ except ImportError:
 
 try:
     import safety_gym
+    print(safety_gym.__file__)
 except ImportError:
     print("can not find safety gym...")
 
@@ -36,6 +37,8 @@ class Runner:
         "ddpg": (DDPG, False, OffPolicyWorker),
         "ddpg_lag": (DDPGLagrangian, False, OffPolicyWorker),
         "cvpo": (CVPO, False, OffPolicyWorker),
+        "sac_lag_jp": (SACLagrangian, False, JumpStartOffPolicyWorker),
+        "cvpo_jp": (CVPO, False, JumpStartOffPolicyWorker),
     }
 
     def __init__(self,
@@ -128,6 +131,13 @@ class Runner:
         self.steps_per_epoch = self.policy_config[
             "steps_per_epoch"] if "steps_per_epoch" in self.policy_config else 1
         self.worker_config = self.policy_config["worker_config"]
+
+        if "jp" in policy.lower():
+            model_dir = self.worker_config["model_dir"]
+            expert = SAC(self.env, self.logger)
+            expert.load_model(model_dir)
+            self.worker_config["expert_policy"] = expert 
+
         self.worker = worker_cls(self.env,
                                  self.policy,
                                  self.logger,
