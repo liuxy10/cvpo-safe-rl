@@ -94,6 +94,7 @@ class Runner:
             self.cost_limit = self.policy_config["cost_limit"]
         else:
             self.cost_limit = 1e3
+        self.eval_max_rew = -float("inf")
 
     def _train_mode_init(self, env, seed, exp_name, policy, timeout_steps, data_dir,
                          **kwarg):
@@ -134,7 +135,8 @@ class Runner:
 
         if "jp" in policy.lower():
             model_dir = self.worker_config["model_dir"]
-            expert = SAC(self.env, self.logger)
+            dummy_logger = EpochLogger(output_dir="data/test")
+            expert = SAC(self.env, dummy_logger)
             expert.load_model(model_dir)
             self.worker_config["expert_policy"] = expert 
                     
@@ -142,11 +144,16 @@ class Runner:
                 self.policy.load_critic(model_dir)
                 print("Successfully Loaded Critic!\n")
 
+            self.add_bc_loss = self.worker_config["add_bc_loss"]
+            
         self.worker = worker_cls(self.env,
                                  self.policy,
                                  self.logger,
                                  timeout_steps=self.timeout_steps,
                                  **self.worker_config)
+        if self.add_bc_loss:
+            expert_data_dir = self.worker_config["expert_data_dir"]
+            self.worker.load_expert_cpp_buffer(expert_data_dir)
 
     def _eval_mode_init(self, env, seed, model_path, policy, timeout_steps,
                         policy_config):
@@ -182,9 +189,11 @@ class Runner:
             range(train_steps), desc='training {}/{}'.format(
                 epoch + 1, self.epochs)) if self.verbose else range(train_steps)
         for i in range_instance:
+            if self.add_bc_loss:
+                expert_data = self.worker.get_expert_sample()
+                self.policy.learn_on_expert_batch(expert_data)
             data = self.worker.get_sample()
             self.policy.learn_on_batch(data)
-
         return epoch_steps
 
     # @profile
@@ -214,8 +223,8 @@ class Runner:
                 self.policy.post_epoch_process()
 
             # Save model
-            if (epoch % self.save_freq == 0) or (epoch == self.epochs - 1):
-                self.logger.save_state({'env': self.env}, None)
+            # if (epoch % self.save_freq == 0) or (epoch == self.epochs - 1):
+            #     self.logger.save_state({'env': self.env}, None)
             # Log info about epoch
             self.data_dict = self._log_metrics(epoch, total_steps,
                                                time.time() - start_time, self.verbose)
@@ -247,7 +256,9 @@ class Runner:
 
                 if done:
                     break
-
+            if ep_reward > self.eval_max_rew:
+                self.eval_max_rew = ep_reward
+                self.logger.save_state({'env': self.env}, None)
             self.logger.store(EpRet=ep_reward, EpLen=ep_len, EpCost=ep_cost, tab="eval")
 
             # Log info about epoch

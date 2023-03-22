@@ -54,6 +54,7 @@ class JumpStartOffPolicyWorker:
             self.SAFE_RL_ENV = True
             env_dict["cost"] = {'dtype': np.float32}
         self.cpp_buffer = ReplayBuffer(buffer_size, env_dict)
+        self.expert_cpp_buffer = ReplayBuffer(buffer_size, env_dict)
 
         # ######### Warmup phase to collect data with random policy #########
         # steps = 0
@@ -164,6 +165,17 @@ class JumpStartOffPolicyWorker:
         if "cost" in data:
             data["cost"] = torch.squeeze(data["cost"])
         return data
+    
+    def get_expert_sample(self):
+        data = to_tensor(self.expert_cpp_buffer.sample(self.batch_size))
+        data["rew"] = torch.squeeze(data["rew"])
+        data["done"] = torch.squeeze(data["done"])
+        if "cost" in data:
+            data["cost"] = torch.squeeze(data["cost"])
+        return data
+    
+    def load_expert_cpp_buffer(self, expert_data_dir):
+        self.expert_cpp_buffer.load_transitions(expert_data_dir)
 
     def clear_buffer(self):
         self.cpp_buffer.clear()

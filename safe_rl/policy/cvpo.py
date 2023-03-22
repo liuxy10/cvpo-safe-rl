@@ -4,6 +4,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
 from scipy.optimize import minimize
 from safe_rl.policy.base_policy import Policy
 from safe_rl.policy.model.mlp_ac import (EnsembleQCritic, CholeskyGaussianActor)
@@ -289,6 +290,13 @@ class CVPO(Policy):
         self._polyak_update_target(self.qc, self.qc_targ)
         self._polyak_update_target(self.actor, self.actor_targ)
 
+    def learn_on_expert_batch(self, expert_data: dict):
+        '''
+        Given a batch of data, train the policy
+        data keys: (obs, act, rew, obs_next, done)
+        '''
+        self._update_actor_bc(expert_data)
+
     def post_epoch_process(self):
         '''
         Update the cost limit.
@@ -311,6 +319,20 @@ class CVPO(Policy):
         mean, cholesky = self.actor(obs)
         pi_dist = MultivariateNormal(mean, scale_tril=cholesky) if return_pi else None
         return mean, cholesky, pi_dist
+
+    def _update_actor_bc(self, expert_data):
+        """Update the actor using imitation loss."""
+        obs = expert_data["obs"]
+        act = expert_data["act"]
+        pred, _ = self.actor.forward(obs)
+        assert act.shape == pred.shape, "Predicted and data action should have the same shape!"
+        self.actor_optimizer.zero_grad()
+        loss = F.mse_loss(pred, act)
+        loss.backward()
+        clip_grad_norm_(self.actor.parameters(), 0.01)
+        self.actor_optimizer.step()
+        self.logger.store(bc_loss=loss.item())
+
 
     def _update_actor(self, data):
         '''
