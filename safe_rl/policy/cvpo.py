@@ -173,7 +173,8 @@ class CVPO(Policy):
             raise ValueError(f"{ac_model} ac model does not support.")
 
         # Set up optimizer and target q models
-        self._ac_training_setup(actor, critic)
+        self._actor_training_setup(actor)
+        self._critic_training_setup(critic)
 
         qc = EnsembleQCritic(self.obs_dim,
                              self.act_dim,
@@ -212,19 +213,23 @@ class CVPO(Policy):
             self.epoch) if self.epoch < self.decay_epoch else self.qc_end
         self.epoch += 1
 
-    def _ac_training_setup(self, actor, critic):
-        critic_targ = deepcopy(critic)
+    def _actor_training_setup(self, actor):
         actor_targ = deepcopy(actor)
-        self.actor, self.actor_targ, self.critic, self.critic_targ = to_device(
-            [actor, actor_targ, critic, critic_targ], get_device_name())
+        self.actor, self.actor_targ = to_device(
+            [actor, actor_targ], get_device_name())
         # Freeze target networks with respect to optimizers (only update via polyak averaging)
-        for p in self.critic_targ.parameters():
-            p.requires_grad = False
         for p in self.actor_targ.parameters():
             p.requires_grad = False
 
         # Set up optimizers for policy and value function
         self.actor_optimizer = Adam(self.actor.parameters(), lr=self.actor_lr)
+    
+    def _critic_training_setup(self, critic):
+        critic_targ = deepcopy(critic)
+        self.critic, self.critic_targ = to_device(
+            [critic, critic_targ], get_device_name())
+        for p in self.critic_targ.parameters():
+            p.requires_grad = False
         self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr)
 
     def _qc_training_setup(self, qc):
@@ -502,5 +507,12 @@ class CVPO(Policy):
     def load_model(self, path):
         actor, critic, qc = torch.load(path)
         actor, critic, qc = to_device([actor, critic, qc])
-        self._ac_training_setup(actor, critic)
+        self._actor_training_setup(actor)
+        self._critic_training_setup(critic)
         self._qc_training_setup(qc)
+    
+    def load_critic(self, path):
+        models = torch.load(path)
+        models = to_device(models)
+        critic = models[1]
+        self._critic_training_setup(critic)

@@ -137,6 +137,10 @@ class Runner:
             expert = SAC(self.env, self.logger)
             expert.load_model(model_dir)
             self.worker_config["expert_policy"] = expert 
+                    
+            if self.worker_config["load_critic"]:
+                self.policy.load_critic(model_dir)
+                print("Successfully Loaded Critic!\n")
 
         self.worker = worker_cls(self.env,
                                  self.policy,

@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--suffix', '--id', type=str, default=None)
     parser.add_argument('--no_render', action="store_true")
     parser.add_argument('--sleep', type=float, default=0.003)
+    parser.add_argument('--load_critic', action="store_true")
     args = parser.parse_args()
 
     args_dict = vars(args)
@@ -75,9 +76,19 @@ if __name__ == '__main__':
         "Safexp-CarPush1-v0":
             "data/Safexp-CarPush1-v0_cost_10/sac_epoch_300_new_env/" +
             "sac_epoch_300_new_env_s0/model_save/model.pt",
+        "Safexp-CarGoal2-v0":
+            "data/Safexp-CarGoal2-v0_cost_10/sac_epoch_150_new_env/" +
+            "sac_epoch_150_new_env_s0/model_save/model.pt",
+        "Safexp-CarButton2-v0":
+            "data/Safexp-CarButton2-v0_cost_10/sac_epoch_150_new_env/" +
+            "sac_epoch_150_new_env_s0/model_save/model.pt",
+        "Safexp-CarPush2-v0":
+            "data/Safexp-CarPush2-v0_cost_10/sac_epoch_150_new_env/" +
+            "sac_epoch_150_new_env_s0/model_save/model.pt",
     }
     assert args.env in model_dirs, f"No pretrained model for {args.env}!"
     config[args.policy]["worker_config"]["model_dir"] = model_dirs[args.env]
+    config[args.policy]["worker_config"]["load_critic"] = config["load_critic"]
 
     if "Safety" in args.env:
         runner = SafetyGymRunner(**config)

@@ -14,7 +14,7 @@ device_id: 0
 # if device is cpu, specify the thread num
 threads: 4
 policy: "ddpg"
-epochs: 300
+epochs: 150
 save_freq: 5
 exp_name: null
 # data dir to save the logger files
