@@ -141,3 +141,5 @@ dmypy.json
 .pyre/
 
 run*.sh
+
+*.npz
