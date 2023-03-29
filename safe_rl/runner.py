@@ -94,7 +94,6 @@ class Runner:
             self.cost_limit = self.policy_config["cost_limit"]
         else:
             self.cost_limit = 1e3
-        self.eval_max_rew = -float("inf")
 
     def _train_mode_init(self, env, seed, exp_name, policy, timeout_steps, data_dir,
                          **kwarg):
@@ -135,7 +134,7 @@ class Runner:
 
         if "jp" in policy.lower():
             model_dir = self.worker_config["model_dir"]
-            dummy_logger = EpochLogger(output_dir="data/test")
+            dummy_logger = EpochLogger(output_dir="data/test", use_tensor_board=False)
             expert = SAC(self.env, dummy_logger)
             expert.load_model(model_dir)
             self.worker_config["expert_policy"] = expert 
@@ -256,9 +255,6 @@ class Runner:
 
                 if done:
                     break
-            if ep_reward > self.eval_max_rew:
-                self.eval_max_rew = ep_reward
-                self.logger.save_state({'env': self.env}, None)
             self.logger.store(EpRet=ep_reward, EpLen=ep_len, EpCost=ep_cost, tab="eval")
 
             # Log info about epoch

@@ -55,6 +55,7 @@ class JumpStartOffPolicyWorker:
             env_dict["cost"] = {'dtype': np.float32}
         self.cpp_buffer = ReplayBuffer(buffer_size, env_dict)
         self.expert_cpp_buffer = ReplayBuffer(buffer_size, env_dict)
+        self.eval_max_rew = -float("inf")
 
         # ######### Warmup phase to collect data with random policy #########
         # steps = 0
@@ -153,6 +154,11 @@ class JumpStartOffPolicyWorker:
             obs = obs_next
             if done:
                 break
+
+        if ep_reward > self.eval_max_rew:
+            self.eval_max_rew = ep_reward
+            self.logger.save_state({'env': self.env}, None)
+
         self.logger.store(TestEpRet=ep_reward,
                           TestEpLen=ep_len,
                           TestEpCost=ep_cost,

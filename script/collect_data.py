@@ -22,7 +22,7 @@ def main(config):
     env = gym.make(config["env"])
 
     model_dir = config["model_dir"]
-    dummy_logger = EpochLogger(output_dir="data/test")
+    dummy_logger = EpochLogger(output_dir="data/test", use_tensor_board=False)
     expert = CVPO(env, dummy_logger)
     expert.load_model(model_dir)
 
