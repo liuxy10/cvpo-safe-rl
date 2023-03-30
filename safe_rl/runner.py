@@ -143,7 +143,7 @@ class Runner:
                 self.policy.load_critic(model_dir)
                 print("Successfully Loaded Critic!\n")
 
-            self.add_bc_loss = self.worker_config["add_bc_loss"]
+        self.add_bc_loss = self.worker_config.get("add_bc_loss", False)
             
         self.worker = worker_cls(self.env,
                                  self.policy,
