@@ -102,8 +102,14 @@ class Runner:
         attrs = deepcopy(self.__dict__)
 
         # Instantiate environment
+        # env_config = {
+        #     "_seed": seed,
+        #     "num_different_layouts": kwarg["env_layout_nums"],
+        # }
+        # self.env = gym.make(env, config=env_config)
         self.env = gym.make(env)
         self.env.seed(seed)
+        self.env.set_num_different_layouts(kwarg["env_layout_nums"])
         self.timeout_steps = self.env._max_episode_steps if timeout_steps == -1 else timeout_steps
 
         # Set up logger and save configuration
@@ -133,15 +139,18 @@ class Runner:
         self.worker_config = self.policy_config["worker_config"]
 
         if "jp" in policy.lower():
-            model_dir = self.worker_config["model_dir"]
+            self.worker_config["expert_policies"] = {} 
             dummy_logger = EpochLogger(output_dir="data/test", use_tensor_board=False)
-            expert = SAC(self.env, dummy_logger)
-            expert.load_model(model_dir)
-            self.worker_config["expert_policy"] = expert 
+            for idx in self.worker_config["model_dir"].keys():
+                model_dir = self.worker_config["model_dir"][idx]
+                expert = CVPO(self.env, dummy_logger)
+                expert.load_model(model_dir)
+                self.worker_config["expert_policies"][idx] = expert 
                     
-            if self.worker_config["load_critic"]:
-                self.policy.load_critic(model_dir)
-                print("Successfully Loaded Critic!\n")
+                if self.worker_config["load_critic"]:
+                    raise NotImplementedError("load critic is not supported for multiple expert policies!")
+                    self.policy.load_critic(model_dir)
+                    print("Successfully Loaded Critic!\n")
 
         self.add_bc_loss = self.worker_config.get("add_bc_loss", False)
             
@@ -158,7 +167,7 @@ class Runner:
                         policy_config):
         # Instantiate environment
         self.env = gym.make(env)
-        self.env.seed(seed)
+        # self.env.seed(seed)
         self.timeout_steps = self.env._max_episode_steps if timeout_steps == -1 else timeout_steps
 
         # Set up logger but don't save anything

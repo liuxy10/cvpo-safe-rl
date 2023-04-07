@@ -18,7 +18,7 @@ class SafetyGymRunner(Runner):
         super().eval(epochs, sleep, False)
 
 
-EXP_NAME_KEYS = {"epochs": "epoch"}
+EXP_NAME_KEYS = {"epochs": "epoch", "env_layout_nums": "layouts"}
 DATA_DIR_KEYS = {"cost_limit": "cost"}
 
 
@@ -41,6 +41,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', '-e', type=str, default='Safexp-PointButton1-v0')
+    parser.add_argument('--env_layout_nums', '-eln', type=int, default=1)
     parser.add_argument('--policy', '-p', type=str, default='cvpo')
     parser.add_argument('--pretrain_dir', '-pre', type=str, default=None)
     parser.add_argument('--load_dir', '-d', type=str, default=None)

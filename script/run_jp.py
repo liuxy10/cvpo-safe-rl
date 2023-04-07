@@ -18,7 +18,7 @@ class SafetyGymRunner(Runner):
         super().eval(epochs, sleep, False)
 
 
-EXP_NAME_KEYS = {"epochs": "epoch"}
+EXP_NAME_KEYS = {"epochs": "epoch", "env_layout_nums": "layouts"}
 DATA_DIR_KEYS = {"cost_limit": "cost"}
 
 
@@ -41,6 +41,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', '-e', type=str, default='Safexp-PointButton1-v0')
+    parser.add_argument('--env_layout_nums', '-eln', type=int, default=1)
     parser.add_argument('--policy', '-p', type=str, default='cvpo')
     parser.add_argument('--pretrain_dir', '-pre', type=str, default=None)
     parser.add_argument('--load_dir', '-d', type=str, default=None)
@@ -69,11 +70,16 @@ if __name__ == '__main__':
 
     model_dirs = {
         "Safexp-CarGoal1-v0": 
-            "data/Safexp-CarGoal1-v0_cost_10/sac_epoch_300_new_env/" + 
-            "sac_epoch_300_new_env_s0/model_save/model.pt",
+            {
+                2: "data/Safexp-CarGoal1-v0_cost_10/sac_epoch_150_random-start/" +
+                    "sac_epoch_150_random-start_s0/model_save/model.pt",
+            },
         "Safexp-CarButton1-v0":
-            "data/Safexp-CarButton1-v0_cost_10/sac_epoch_300_new_env/" +
-            "sac_epoch_300_new_env_s0/model_save/model.pt",
+            {
+                2: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
+                3: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
+            },
         "Safexp-CarPush1-v0":
             "data/Safexp-CarPush1-v0_cost_10/sac_epoch_300_new_env/" +
             "sac_epoch_300_new_env_s0/model_save/model.pt",

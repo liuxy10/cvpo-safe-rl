@@ -22,7 +22,7 @@ class JumpStartOffPolicyWorker:
                  **kwargs) -> None:
         self.env = env
         self.policy = policy
-        self.expert = kwargs["expert_policy"]
+        self.expert = kwargs["expert_policies"]
         self.logger = logger
         self.batch_size = batch_size
         self.timeout_steps = timeout_steps
@@ -57,6 +57,8 @@ class JumpStartOffPolicyWorker:
         self.expert_cpp_buffer = ReplayBuffer(buffer_size, env_dict)
         self.eval_max_rew = -float("inf")
 
+        self.last_obs_reset = None
+
         # ######### Warmup phase to collect data with random policy #########
         # steps = 0
         # while steps < warmup_steps:
@@ -66,24 +68,28 @@ class JumpStartOffPolicyWorker:
         # for i in range(warmup_steps // 2):
         #     self.policy.learn_on_batch(self.get_sample())
 
-    def reset_guidance_steps(self, ):
-        self.guidance_steps = np.random.randint(0, self.timeout_steps)
+    def reset_guidance_steps(self, upper_bound):
+        self.guidance_steps = np.random.randint(0, upper_bound)
 
     def work(self, warmup=False):
         '''
         Interact with the environment to collect data
         '''
         obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
-        self.reset_guidance_steps()
+        idx = self.env.get_seed()
+        if self.last_obs_reset is not None and self.env.num_different_layouts == 1:
+            assert np.sum(obs - self.last_obs_reset) < 1e-6
+        self.last_obs_reset = obs
+        self.reset_guidance_steps(self.timeout_steps)
 
         epoch_steps = 0
         terminal_freq = 0
         done_freq = 0
-
+        last_steps = -1
         for i in range(self.timeout_steps):
             # TODO: Change here for jump start
-            if i < self.guidance_steps:
-                action, _ = self.expert.act(obs, 
+            if i-last_steps <= self.guidance_steps:
+                action, _ = self.expert[idx].act(obs, 
                                             deterministic=False,
                                             with_logprob=False)
             else:
@@ -101,6 +107,9 @@ class JumpStartOffPolicyWorker:
 
             if done:
                 done_freq += 1
+                self.reset_guidance_steps(i - last_steps + 1)
+                last_steps = i
+
 
             if "cost" in info:
                 cost = info["cost"]
@@ -128,7 +137,8 @@ class JumpStartOffPolicyWorker:
                                   EpLen=ep_len,
                                   tab="worker")
                 obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
-                self.reset_guidance_steps()
+                idx = self.env.get_seed()
+                self.reset_guidance_steps(self.timeout_steps)
                 # break
         self.logger.store(EpRet=ep_reward,
                           EpCost=ep_cost,

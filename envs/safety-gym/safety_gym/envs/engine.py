@@ -13,6 +13,8 @@ from safety_gym.envs.world import World, Robot
 
 import sys
 
+import json
+
 # Distinct colors for different types of objects.
 # For now this is mostly used for visualization.
 # This also affects the vision observation, so if training from pixels.
@@ -48,6 +50,11 @@ ORIGIN_COORDINATES = np.zeros(3)
 DEFAULT_WIDTH = 256
 DEFAULT_HEIGHT = 256
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 class ResamplingError(AssertionError):
     ''' Raised when we fail to sample a valid distribution of objects or goals '''
@@ -115,7 +122,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
         # Starting position distribution
         'randomize_layout':
-        False,  # If false, set the random seed before layout to constant
+        True,  # If false, set the random seed before layout to constant
         'build_resample': True,  # If true, rejection sample from valid environments
         'continue_goal': True,  # If true, draw a new goal after achievement
         'terminate_resample_failure':
@@ -312,6 +319,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         10,  # Number of draws trials in binomial distribution (max frameskip)
         'frameskip_binom_p': 1.0,  # Probability of trial return (controls distribution)
         '_seed': None,  # Random state seed (avoid name conflict with self.seed)
+        'num_different_layouts': 1, # Number of different layouts if randomize_layout == True
     }
 
     def __init__(self, config={}):
@@ -649,6 +657,13 @@ class Engine(gym.Env, gym.utils.EzPickle):
     def seed(self, seed=None):
         ''' Set internal random state seeds '''
         self._seed = np.random.randint(2**32) if seed is None else seed
+        self.original_seed = self._seed
+
+    def set_num_different_layouts(self, num=1):
+        self.num_different_layouts = num
+
+    def get_seed(self, ):
+        return self._seed
 
     def build_layout(self):
         ''' Rejection sample a placement of objects to find a layout. '''
@@ -683,6 +698,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 return False
             layout[name] = xy
         self.layout = layout
+        # with open('goal1-layout-2.json', 'w') as f:
+        #     json.dump(self.layout, f, cls=NumpyEncoder, indent=4)
+        # import pdb;pdb.set_trace()
         return True
 
     def constrain_placement(self, placement, keepout):
@@ -991,7 +1009,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
     def reset(self):
         ''' Reset the physics simulation and return observation '''
-        self._seed += 1  # Increment seed
+        # self._seed += 1  # Increment seed
+        self._seed = (
+            self._seed - self.original_seed + 1
+        ) % self.num_different_layouts + self.original_seed # Increment seed
         self.rs = np.random.RandomState(self._seed)
         self.done = False
         self.steps = 0  # Count of steps taken in this episode

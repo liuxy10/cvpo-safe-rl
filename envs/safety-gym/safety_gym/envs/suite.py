@@ -164,13 +164,18 @@ button_all = {
     'buttons_size': 0.1,
     'buttons_keepout': 0.2,
     'observe_buttons': True,
+#     'hazards_size': 0.2,
+#     'hazards_keepout': 0.18,
+#     'gremlins_travel': 0.35,
+#     'gremlins_keepout': 0.4,
+# }
     'hazards_size': 0.17,
     'hazards_keepout': 0.,
     'gremlins_travel': 0.3,
     'gremlins_keepout': 0.35,
-    'hazards_locations': [(0, -1.9), (0., 1.9), (0, 0), (1.9, 0), (-1.9, 0)],
-    'buttons_locations': [(-1.3, -1.3), (1.3, -1.3), (-1.3, 1.3), (1.3, 1.3)],
-    'gremlins_locations': [(0, -1.3), (0., 1.3), (1.3, 0), (-1.3, 0)]
+    # 'hazards_locations': [(0, -1.9), (0., 1.9), (0, 0), (1.9, 0), (-1.9, 0)],
+    # 'buttons_locations': [(-1.3, -1.3), (1.3, -1.3), (-1.3, 1.3), (1.3, 1.3)],
+    # 'gremlins_locations': [(0, -1.3), (0., 1.3), (1.3, 0), (-1.3, 0)]
 }
 
 # Shared among constrained envs (levels 1, 2)

@@ -15,7 +15,7 @@ device_id: 0
 # if device is cpu, specify the thread num
 threads: 4
 policy: "cvpo"
-epochs: 150
+epochs: 600
 save_freq: 2
 exp_name: null
 # data dir to save the logger files

@@ -63,12 +63,17 @@ class OffPolicyWorker:
         ######### Train the policy with warmup samples #########
         for i in range(warmup_steps // 2):
             self.policy.learn_on_batch(self.get_sample())
+        
+        self.last_obs_reset = None
 
     def work(self, warmup=False):
         '''
         Interact with the environment to collect data
         '''
         obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
+        if self.last_obs_reset is not None and self.env.num_different_layouts == 1:
+            assert np.sum(obs - self.last_obs_reset) < 1e-6
+        self.last_obs_reset = obs
         epoch_steps = 0
         terminal_freq = 0
         done_freq = 0
