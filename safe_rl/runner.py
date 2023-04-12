@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 # from memory_profiler import profile
 
-from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO
+from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO, BC
 from safe_rl.util.logger import EpochLogger, setup_logger_kwargs
 from safe_rl.util.run_util import load_config, setup_eval_configs
 from safe_rl.util.torch_util import export_device_env_variable, seed_torch
@@ -39,6 +39,7 @@ class Runner:
         "cvpo": (CVPO, False, OffPolicyWorker),
         "sac_lag_jp": (SACLagrangian, False, JumpStartOffPolicyWorker),
         "cvpo_jp": (CVPO, False, JumpStartOffPolicyWorker),
+        "bc": (BC, False, OffPolicyWorker),
     }
 
     def __init__(self,
@@ -108,7 +109,7 @@ class Runner:
         # }
         # self.env = gym.make(env, config=env_config)
         self.env = gym.make(env)
-        self.env.seed(seed)
+        self.env.seed(kwarg["env_seed"])
         self.env.set_num_different_layouts(kwarg["env_layout_nums"])
         self.timeout_steps = self.env._max_episode_steps if timeout_steps == -1 else timeout_steps
 
@@ -141,17 +142,18 @@ class Runner:
         if "jp" in policy.lower():
             self.worker_config["expert_policies"] = {} 
             dummy_logger = EpochLogger(output_dir="data/test", use_tensor_board=False)
-            for idx in self.worker_config["model_dir"].keys():
-                model_dir = self.worker_config["model_dir"][idx]
-                expert = CVPO(self.env, dummy_logger)
-                expert.load_model(model_dir)
-                self.worker_config["expert_policies"][idx] = expert 
-                    
-                if self.worker_config["load_critic"]:
-                    raise NotImplementedError("load critic is not supported for multiple expert policies!")
-                    self.policy.load_critic(model_dir)
-                    print("Successfully Loaded Critic!\n")
 
+            model_dir = self.worker_config["model_dir"][self.env.get_seed()]
+            expert = BC(self.env, dummy_logger)
+            expert.load_model(model_dir)
+            self.worker_config["expert_policies"][self.env.get_seed()] = expert 
+
+            if self.worker_config["load_critic"]:
+                self.policy.load_critic(model_dir)
+                print("Successfully Loaded Critic!\n")
+        if self.worker_config["load_actor"]:
+            model_dir = self.worker_config["model_dir"][self.env.get_seed()]
+            self.policy.load_actor(model_dir)
         self.add_bc_loss = self.worker_config.get("add_bc_loss", False)
             
         self.worker = worker_cls(self.env,
@@ -159,9 +161,13 @@ class Runner:
                                  self.logger,
                                  timeout_steps=self.timeout_steps,
                                  **self.worker_config)
+        
+        expert_data_dir = self.worker_config.get("expert_data_dir", None)
         if self.add_bc_loss:
-            expert_data_dir = self.worker_config["expert_data_dir"]
             self.worker.load_expert_cpp_buffer(expert_data_dir)
+        if "bc" == policy.lower():
+            self.worker.load_cpp_buffer(expert_data_dir)
+
 
     def _eval_mode_init(self, env, seed, model_path, policy, timeout_steps,
                         policy_config):
@@ -191,8 +197,12 @@ class Runner:
         for i in range_instance:
             steps = self.worker.work()
             epoch_steps += steps
-
-        train_steps = self.episode_rerun_num * epoch_steps // self.batch_size
+        
+        if self.sample_episode_num > 0:
+            train_steps = self.episode_rerun_num * epoch_steps // self.batch_size
+        else:
+            train_steps = 1000
+            epoch_steps = 8000
         range_instance = tqdm(
             range(train_steps), desc='training {}/{}'.format(
                 epoch + 1, self.epochs)) if self.verbose else range(train_steps)

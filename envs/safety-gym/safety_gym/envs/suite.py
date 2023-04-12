@@ -260,16 +260,21 @@ push0 = deepcopy(zero_base_dict)
 # Push Level 1 #
 #==============#
 # Note: pillars are present but unconstrained in Push1.
+# push1 = {
+#     # 'placements_extents': [-1.5, -1.5, 1.5, 1.5],
+#     'constrain_pillars': True,
+#     'pillars_locations': [(-2., 0), (2., 0), (0, 0), (1., 1.0), (-1., 1.0)],
+#     'hazards_num': 4,
+#     'pillars_num': 5,
+#     'hazards_locations': [(0.5, -0.5), (-0.5, -0.5), (1.8, 0.8), (-1.8, 0.8)],
+#     'box_locations': [(0, -1.5)],  # Fixed locations to override placements
+#     'goal_placements': [(-2, -0.5, 2, 2)],  # xmin, ymin, xmax, ymax for goal range
+#     'robot_locations': [(-1, -2)],
+# }
 push1 = {
-    # 'placements_extents': [-1.5, -1.5, 1.5, 1.5],
-    'constrain_pillars': True,
-    'pillars_locations': [(-2., 0), (2., 0), (0, 0), (1., 1.0), (-1., 1.0)],
-    'hazards_num': 4,
-    'pillars_num': 5,
-    'hazards_locations': [(0.5, -0.5), (-0.5, -0.5), (1.8, 0.8), (-1.8, 0.8)],
-    'box_locations': [(0, -1.5)],  # Fixed locations to override placements
-    'goal_placements': [(-2, -0.5, 2, 2)],  # xmin, ymin, xmax, ymax for goal range
-    'robot_locations': [(-1, -2)],
+    'placements_extents': [-1.5, -1.5, 1.5, 1.5],
+    'hazards_num': 3,
+    'pillars_num': 2
 }
 push1.update(push_constrained)
 

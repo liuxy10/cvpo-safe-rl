@@ -165,5 +165,8 @@ class OffPolicyWorker:
             data["cost"] = torch.squeeze(data["cost"])
         return data
 
+    def load_cpp_buffer(self, expert_data_dir):
+        self.cpp_buffer.load_transitions(expert_data_dir)
+
     def clear_buffer(self):
         self.cpp_buffer.clear()

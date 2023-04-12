@@ -18,7 +18,7 @@ class SafetyGymRunner(Runner):
         super().eval(epochs, sleep, False)
 
 
-EXP_NAME_KEYS = {"epochs": "epoch", "env_layout_nums": "layouts"}
+EXP_NAME_KEYS = {"epochs": "epoch", "env_layout_nums": "layouts", "env_seed": "es"}
 DATA_DIR_KEYS = {"cost_limit": "cost"}
 
 
@@ -47,12 +47,14 @@ if __name__ == '__main__':
     parser.add_argument('--load_dir', '-d', type=str, default=None)
     parser.add_argument('--mode', '-m', type=str, default='train')
     parser.add_argument('--seed', '-s', type=int, default=0)
+    parser.add_argument('--env_seed', '-es', type=int, default=0)
     parser.add_argument('--device', type=str, default="cpu")
     parser.add_argument('--exp_name', type=str, default=None)
     parser.add_argument('--suffix', '--id', type=str, default=None)
     parser.add_argument('--no_render', action="store_true")
     parser.add_argument('--sleep', type=float, default=0.003)
     parser.add_argument('--load_critic', action="store_true")
+    parser.add_argument('--load_actor', action="store_true")
     parser.add_argument('--bc_loss', action="store_true")
     args = parser.parse_args()
 
@@ -60,6 +62,8 @@ if __name__ == '__main__':
 
     if 'cvpo' in args.policy:
         config_path = osp.join(CONFIG_DIR, "config_cvpo.yaml")
+    elif args.policy == 'bc':
+        config_path = osp.join(CONFIG_DIR, "config_bc.yaml")
     else:
         config_path = osp.join(CONFIG_DIR, "config_baseline.yaml")
     config = load_config(config_path)
@@ -71,18 +75,18 @@ if __name__ == '__main__':
     model_dirs = {
         "Safexp-CarGoal1-v0": 
             {
-                2: "data/Safexp-CarGoal1-v0_cost_10/sac_epoch_150_random-start/" +
-                    "sac_epoch_150_random-start_s0/model_save/model.pt",
+                3: "data/Safexp-CarGoal1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
             },
         "Safexp-CarButton1-v0":
             {
-                2: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
-                3: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
-                4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
+                4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
+                2: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                3: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
             },
         "Safexp-CarPush1-v0":
-            "data/Safexp-CarPush1-v0_cost_10/sac_epoch_300_new_env/" +
-            "sac_epoch_300_new_env_s0/model_save/model.pt",
+            {
+                3: "data/Safexp-CarPush1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
+            },
         "Safexp-CarGoal2-v0":
             "data/Safexp-CarGoal2-v0_cost_10/sac_epoch_150_new_env/" +
             "sac_epoch_150_new_env_s0/model_save/model.pt",
@@ -96,10 +100,11 @@ if __name__ == '__main__':
     assert args.env in model_dirs, f"No pretrained model for {args.env}!"
     config[args.policy]["worker_config"]["model_dir"] = model_dirs[args.env]
     config[args.policy]["worker_config"]["load_critic"] = config["load_critic"]
+    config[args.policy]["worker_config"]["load_actor"] = config["load_actor"]
     config[args.policy]["worker_config"]["add_bc_loss"] = (
         config["bc_loss"])
     config[args.policy]["worker_config"]["expert_data_dir"] = (
-        "data/expert_data_" + args.env + ".npz"
+        "data/expert_data_" + args.env + "_s2.npz"
     )
 
     if "Safety" in args.env:

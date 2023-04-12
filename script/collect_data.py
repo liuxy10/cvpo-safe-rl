@@ -20,6 +20,7 @@ def main(config):
 
     total_timesteps = config["total_timesteps"]
     env = gym.make(config["env"])
+    env.seed(config["seed"])
 
     model_dir = config["model_dir"]
     dummy_logger = EpochLogger(output_dir="data/test", use_tensor_board=False)
@@ -94,19 +95,32 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', '-e', type=str, default='Safexp-PointButton1-v0')
     parser.add_argument('--total_timesteps', '-t', type=int, default=int(1e5))
+    parser.add_argument('--seed', '-s', type=int, default=0)
     config = parser.parse_args()
     config = vars(config)
 
     model_dirs = {
         "Safexp-CarGoal1-v0": 
-            "data/Safexp-CarGoal1-v0_cost_10/cvpo_jp_epoch_150_load_critic/" +
-            "cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
+            {
+                0: "data/Safexp-CarGoal1-v0_cost_10/cvpo_jp_epoch_150_load_critic/cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
+                2: "data/Safexp-CarGoal1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
+                3: "data/Safexp-CarGoal1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                4: "data/Safexp-CarGoal1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
+            },
         "Safexp-CarButton1-v0":
-            "data/Safexp-CarButton1-v0_cost_10/cvpo_jp_epoch_150_load_critic/" + 
-            "cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
+            {
+                0: "data/Safexp-CarButton1-v0_cost_10/cvpo_jp_epoch_150_load_critic/cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
+                2: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
+                3: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
+            },
         "Safexp-CarPush1-v0":
-            "data/Safexp-CarPush1-v0_cost_10/cvpo_jp_epoch_150_load_critic/" +
-            "cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
+            {
+                0: "data/Safexp-CarPush1-v0_cost_10/cvpo_jp_epoch_150_load_critic/cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
+                2: "data/Safexp-CarPush1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
+                3: "data/Safexp-CarPush1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                4: "data/Safexp-CarPush1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
+            },
         "Safexp-CarGoal2-v0":
             "data/Safexp-CarGoal2-v0_cost_10/cvpo_epoch_150_load_critic/" +
             "cvpo_epoch_150_load_critic_s0/model_save/model.pt",
@@ -117,7 +131,7 @@ if __name__ == '__main__':
             "data/Safexp-CarPush2-v0_cost_10/cvpo_jp_epoch_150_load_critic/" +
             "cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
     }
-    config["model_dir"] = model_dirs[config["env"]]
-    config["expert_data_dir"] = "data/expert_data_" + config["env"]
+    config["model_dir"] = model_dirs[config["env"]][config["seed"]]
+    config["expert_data_dir"] = "data/expert_data_" + config["env"] + '_s' + str(config["seed"])
 
     main(config)

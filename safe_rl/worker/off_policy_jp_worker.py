@@ -107,8 +107,8 @@ class JumpStartOffPolicyWorker:
 
             if done:
                 done_freq += 1
-                self.reset_guidance_steps(i - last_steps + 1)
-                last_steps = i
+                # self.reset_guidance_steps(i - last_steps + 1)
+                # last_steps = i
 
 
             if "cost" in info:

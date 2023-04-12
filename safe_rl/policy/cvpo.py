@@ -538,3 +538,8 @@ class CVPO(Policy):
         models = to_device(models)
         critic = models[1]
         self._critic_training_setup(critic)
+
+    def load_actor(self, path):
+        models = torch.load(path)
+        actor = to_device(models)
+        self._actor_training_setup(actor)

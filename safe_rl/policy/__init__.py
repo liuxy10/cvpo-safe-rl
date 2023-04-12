@@ -6,3 +6,4 @@ from .sac_lag import SACLagrangian
 from .ddpg_lag import DDPGLagrangian
 from .td3_lag import TD3Lagrangian
 from .cvpo import CVPO
+from .bc import BC
