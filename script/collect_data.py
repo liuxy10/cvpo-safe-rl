@@ -111,7 +111,8 @@ if __name__ == '__main__':
             {
                 0: "data/Safexp-CarButton1-v0_cost_10/cvpo_jp_epoch_150_load_critic/cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
                 2: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
-                3: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                # 3: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                3: "data/Safexp-CarButton1-v0_cost_10/cvpo_jp_epoch_600_layouts_1_bc_init_bc_loss/cvpo_jp_epoch_600_layouts_1_bc_init_bc_loss_s3/model_save/model.pt",
                 4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s4/model_save/model.pt",
             },
         "Safexp-CarPush1-v0":
@@ -132,6 +133,6 @@ if __name__ == '__main__':
             "cvpo_jp_epoch_150_load_critic_s0/model_save/model.pt",
     }
     config["model_dir"] = model_dirs[config["env"]][config["seed"]]
-    config["expert_data_dir"] = "data/expert_data_" + config["env"] + '_s' + str(config["seed"])
+    config["expert_data_dir"] = "data/expert_data_" + config["env"] + '_s' + str(config["seed"]) + '_cvpo_jp'
 
     main(config)

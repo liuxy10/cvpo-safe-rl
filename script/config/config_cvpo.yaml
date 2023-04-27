@@ -63,3 +63,4 @@ cvpo: &CVPO
         buffer_size: 80000
 
 cvpo_jp: *CVPO
+cvpo_mql_jp: *CVPO
