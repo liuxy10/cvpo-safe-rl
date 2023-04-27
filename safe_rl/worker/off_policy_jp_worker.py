@@ -4,8 +4,7 @@ import torch
 from cpprb import ReplayBuffer
 from safe_rl.policy.base_policy import Policy
 from safe_rl.util.logger import EpochLogger
-from safe_rl.util.torch_util import to_tensor
-
+from safe_rl.util.torch_util import to_tensor, to_ndarray
 
 class JumpStartOffPolicyWorker:
     r'''
@@ -69,7 +68,7 @@ class JumpStartOffPolicyWorker:
         #     self.policy.learn_on_batch(self.get_sample())
 
     def reset_guidance_steps(self, upper_bound):
-        self.guidance_steps = np.random.randint(0, upper_bound)
+        self.guidance_steps = np.random.randint(1, upper_bound-1)
 
     def work(self, warmup=False):
         '''
@@ -86,16 +85,27 @@ class JumpStartOffPolicyWorker:
         terminal_freq = 0
         done_freq = 0
         last_steps = -1
+        q_expert, q_train = [], []
         for i in range(self.timeout_steps):
             # TODO: Change here for jump start
             if i-last_steps <= self.guidance_steps:
                 action, _ = self.expert[idx].act(obs, 
                                             deterministic=False,
                                             with_logprob=False)
+                with torch.no_grad():
+                    _, q_list = self.policy.critic.predict(to_tensor(obs), to_tensor(action))
+                q_expert += q_list
+                action_policy, _ = self.policy.act(obs,
+                                            deterministic=False,
+                                            with_logprob=False)
+                with torch.no_grad():
+                    _, q_list = self.policy.critic.predict(to_tensor(obs), to_tensor(action_policy))
+                q_train += q_list
             else:
                 action, _ = self.policy.act(obs,
                                             deterministic=False,
                                             with_logprob=False)
+                
             obs_next, reward, done, info = self.env.step(action)
             # Ignore the "done" signal if it comes from hitting the time
             # horizon (that is, when it's an artificial terminal signal
@@ -140,11 +150,17 @@ class JumpStartOffPolicyWorker:
                 idx = self.env.get_seed()
                 self.reset_guidance_steps(self.timeout_steps)
                 # break
+        q_expert = to_ndarray(torch.hstack(q_expert)) if q_expert else 0
+        q_train = to_ndarray(torch.hstack(q_train)) if q_train else 0
         self.logger.store(EpRet=ep_reward,
                           EpCost=ep_cost,
                           EpLen=ep_len,
                           Terminal=terminal_freq,
                           Done=done_freq,
+                          Q_Expert=q_expert,
+                          Q_Train=q_train,
+                          Q_ExpertMinusTrain=q_expert.mean()-q_train.mean(),
+                          GuideFraction=self.guidance_steps/ep_len,
                           tab="worker")
         return epoch_steps
 

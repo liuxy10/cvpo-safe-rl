@@ -80,7 +80,7 @@ if __name__ == '__main__':
         "Safexp-CarButton1-v0":
             {
                 4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
-                2: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s3/model_save/model.pt",
+                2: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
                 3: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
             },
         "Safexp-CarPush1-v0":
