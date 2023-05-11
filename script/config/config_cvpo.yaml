@@ -4,7 +4,7 @@ env: 'Safexp-CarButton1-v0'
 # This is a environment-specific parameter. Determine this carefully based on your gym env.
 # If this is -1, it will be based on the env._max_episode_steps
 timeout_steps: 400
-cost_limit: &COST_LIM 10
+cost_limit: &COST_LIM 20
 seed: 0
 mode: 'train'
 
@@ -29,10 +29,11 @@ episode_rerun_num: 40
 evaluate_episode_num: 20
 
 cvpo: &CVPO
+    use_jp_decay: True
     num_qc: 1
     cost_limit: *COST_LIM
-    use_cost_decay: False
-    cost_start: 300
+    use_cost_decay: True
+    cost_start: 30
     cost_end: *COST_LIM
     decay_epoch: 200
     dual_constraint: 0.1 
@@ -47,8 +48,10 @@ cvpo: &CVPO
     alpha_var_max: 10.0 
     alpha_max: 1.0 
     sample_action_num: 32 
-    actor_lr: 0.002
-    critic_lr: 0.001
+    # actor_lr: 0.002
+    actor_lr: 0.0003
+    # critic_lr: 0.001
+    critic_lr: 0.0003
     ac_model: "mlp"
     # actor critic model_config:
     hidden_sizes: [256, 256]
@@ -64,3 +67,4 @@ cvpo: &CVPO
 
 cvpo_jp: *CVPO
 cvpo_mql_jp: *CVPO
+cvpo_iql_jp: *CVPO

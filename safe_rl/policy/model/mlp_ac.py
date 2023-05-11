@@ -273,3 +273,25 @@ class EnsembleQCritic(nn.Module):
     def loss(self, target, q_list=None):
         losses = [((q - target)**2).mean() for q in q_list]
         return sum(losses)
+
+
+class ValueNetIQL(nn.Module):
+    '''
+    A value network integrated with the loss in Implicit Q Learning.
+    '''
+    def __init__(self, obs_dim, hidden_sizes, activation):
+        super().__init__()
+        self.v = mlp([obs_dim] + list(hidden_sizes) + [1], nn.ReLU)
+
+    def forward(self, obs):
+        # Squeeze is critical to ensure value has the right shape.
+        # Without squeeze, the training stability will be greatly affected!
+        # For instance, shape [3] - shape[3,1] = shape [3, 3] instead of shape [3]
+        return torch.squeeze(self.v(obs), -1)
+
+    def predict(self, obs):
+        return self.forward(obs)
+
+    def loss(self, diff, expectile=0.8):
+        weight = torch.where(diff > 0, expectile, (1 - expectile))
+        return weight * (diff**2)

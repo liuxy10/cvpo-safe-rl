@@ -18,6 +18,8 @@ class JumpStartOffPolicyWorker:
                  timeout_steps=200,
                  buffer_size=1e6,
                  warmup_steps=10000,
+                 use_jp_decay=False,
+                 decay_epoch=100,
                  **kwargs) -> None:
         self.env = env
         self.policy = policy
@@ -25,6 +27,10 @@ class JumpStartOffPolicyWorker:
         self.logger = logger
         self.batch_size = batch_size
         self.timeout_steps = timeout_steps
+
+        self.use_jp_decay = use_jp_decay
+        self.decay_epoch = decay_epoch
+        self.reset_guidance_steps(0)
 
         obs_dim = env.observation_space.shape[0]
         act_dim = env.action_space.shape
@@ -67,8 +73,11 @@ class JumpStartOffPolicyWorker:
         # for i in range(warmup_steps // 2):
         #     self.policy.learn_on_batch(self.get_sample())
 
-    def reset_guidance_steps(self, upper_bound):
-        self.guidance_steps = np.random.randint(1, upper_bound-1)
+    def reset_guidance_steps(self, epoch):
+        if self.use_jp_decay:
+            self.guidance_steps = (self.timeout_steps-1) * np.exp(-5. * epoch / self.decay_epoch)
+        else:
+            self.guidance_steps = np.random.randint(1, self.timeout_steps-1)
 
     def work(self, warmup=False):
         '''
@@ -79,7 +88,6 @@ class JumpStartOffPolicyWorker:
         if self.last_obs_reset is not None and self.env.num_different_layouts == 1:
             assert np.sum(obs - self.last_obs_reset) < 1e-6
         self.last_obs_reset = obs
-        self.reset_guidance_steps(self.timeout_steps)
 
         epoch_steps = 0
         terminal_freq = 0
@@ -148,7 +156,6 @@ class JumpStartOffPolicyWorker:
                                   tab="worker")
                 obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
                 idx = self.env.get_seed()
-                self.reset_guidance_steps(self.timeout_steps)
                 # break
         q_expert = to_ndarray(torch.hstack(q_expert)) if q_expert else 0
         q_train = to_ndarray(torch.hstack(q_train)) if q_train else 0
@@ -211,3 +218,6 @@ class JumpStartOffPolicyWorker:
 
     def clear_buffer(self):
         self.cpp_buffer.clear()
+
+    def post_epoch_process(self, epoch):
+        self.reset_guidance_steps(epoch)

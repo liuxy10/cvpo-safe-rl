@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 # from memory_profiler import profile
 
-from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO, BC
+from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO, BC, CVPOMQL, CVPOIQL
 from safe_rl.util.logger import EpochLogger, setup_logger_kwargs
 from safe_rl.util.run_util import load_config, setup_eval_configs
 from safe_rl.util.torch_util import export_device_env_variable, seed_torch
@@ -40,6 +40,8 @@ class Runner:
         "sac_lag_jp": (SACLagrangian, False, JumpStartOffPolicyWorker),
         "cvpo_jp": (CVPO, False, JumpStartOffPolicyWorker),
         "bc": (BC, False, OffPolicyWorker),
+        "cvpo_mql_jp": (CVPOMQL, False, JumpStartOffPolicyWorker),
+        "cvpo_iql_jp": (CVPOIQL, False, JumpStartOffPolicyWorker),
     }
 
     def __init__(self,
@@ -239,6 +241,8 @@ class Runner:
 
             if hasattr(self.policy, "post_epoch_process"):
                 self.policy.post_epoch_process()
+            if hasattr(self.worker, "post_epoch_process"):
+                self.worker.post_epoch_process(epoch)
 
             # Save model
             # if (epoch % self.save_freq == 0) or (epoch == self.epochs - 1):

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from safe_rl.policy.base_policy import Policy
-from safe_rl.policy.model.mlp_ac import SquashedGaussianMLPActor, EnsembleQCritic
+from safe_rl.policy.model.mlp_ac import SquashedGaussianMLPActor, EnsembleQCritic, ValueNetIQL
 from safe_rl.util.logger import EpochLogger
 from safe_rl.util.torch_util import (count_vars, get_device_name, to_device,
                                      to_ndarray, to_tensor)
@@ -41,6 +41,8 @@ class SAC(Policy):
         '''
         super().__init__()
 
+        self.expectile = 0.8
+
         self.logger = logger
         self.alpha = alpha
         self.gamma = gamma
@@ -73,6 +75,9 @@ class SAC(Policy):
         else:
             raise ValueError(f"{ac_model} ac model does not support.")
 
+        value = ValueNetIQL(self.obs_dim, hidden_sizes, nn.ReLU)
+        self._value_training_setup(value)
+
         # Set up optimizer and target q models
         self._ac_training_setup(actor, critic)
 
@@ -85,6 +90,10 @@ class SAC(Policy):
         self.logger.log(
             '\nNumber of parameters: \t actor pi: %d, \t critic q: %d, \n' %
             var_counts)
+
+    def _value_training_setup(self, value):
+        self.value = to_device(value, get_device_name())
+        self.value_optimizer = Adam(self.value.parameters(), lr=self.critic_lr)
 
     def _ac_training_setup(self, actor, critic):
         critic_targ = deepcopy(critic)
@@ -122,6 +131,8 @@ class SAC(Policy):
         Given a batch of data, train the policy
         data keys: (obs, act, rew, obs_next, done)
         '''
+        self._update_value(data)
+
         self._update_critic(data)
         # Freeze Q-networks so you don't waste computational effort
         # computing gradients for them during the policy learning step.
@@ -137,9 +148,11 @@ class SAC(Policy):
         # Finally, update target networks by polyak averaging.
         self._polyak_update_target(self.critic, self.critic_targ)
 
-    def critic_forward(self, critic, obs, act):
+    def critic_forward(self, critic, obs, act=None):
         # return the minimum q values and the list of all q_values
-        return critic.predict(obs, act)
+        if act is not None:
+            return critic.predict(obs, act)
+        return critic.predict(obs)
 
     def actor_forward(self, obs, deterministic=False, with_logprob=True):
         r''' 
@@ -176,6 +189,31 @@ class SAC(Policy):
         # Log actor update info
         self.logger.store(LossPi=loss_pi.item(), **pi_info)
 
+    def _update_value(self, data):
+        ''' Update the value network.
+        '''
+        def value_loss():
+            obs, act, reward, obs_next, done = (
+                to_tensor(data['obs']), 
+                to_tensor(data['act']), 
+                to_tensor(data['rew']), 
+                to_tensor(data['obs2']), 
+                to_tensor(data['done']),
+            )
+            with torch.no_grad():
+                q, _ = self.critic_forward(self.critic_targ, obs, act)
+            v = self.critic_forward(self.value, obs)
+            assert v.shape == q.shape
+            loss = self.value.loss(q - v, self.expectile).mean()
+            v_info = {'Value': to_ndarray(v)}
+            return loss, v_info
+        
+        self.value_optimizer.zero_grad()
+        loss_v, loss_v_info = value_loss()
+        loss_v.backward()
+        self.value_optimizer.step()
+        self.logger.store(LossV=loss_v.item(), **loss_v_info)
+
     def _update_critic(self, data):
         '''
         Update the critic network
@@ -189,15 +227,20 @@ class SAC(Policy):
             _, q_list = self.critic_forward(self.critic, obs, act)
             # Bellman backup for Q functions
             with torch.no_grad():
-                # Target actions come from *current* policy
-                act_next, logp_a_next = self.actor_forward(obs_next,
-                                                           deterministic=False,
-                                                           with_logprob=True)
+                # # Target actions come from *current* policy
+                # act_next, logp_a_next = self.actor_forward(obs_next,
+                #                                            deterministic=False,
+                #                                            with_logprob=True)
+                # # Target Q-values
+                # q_pi_targ, _ = self.critic_forward(self.critic_targ, obs_next,
+                #                                    act_next)
+                # backup = reward + self.gamma * (1 - done) * (
+                #     q_pi_targ - self.alpha * logp_a_next)
+
                 # Target Q-values
-                q_pi_targ, _ = self.critic_forward(self.critic_targ, obs_next,
-                                                   act_next)
-                backup = reward + self.gamma * (1 - done) * (
-                    q_pi_targ - self.alpha * logp_a_next)
+                next_v = self.critic_forward(self.value, obs_next)
+                backup = reward + self.gamma * (1 - done) * next_v
+                assert backup.shape == q_list[0].shape
             # MSE loss against Bellman backup
             loss_q = self.critic.loss(backup, q_list)
             # Useful info for logging

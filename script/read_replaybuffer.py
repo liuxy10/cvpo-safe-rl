@@ -5,8 +5,8 @@ from cpprb import ReplayBuffer
 
 
 env_name = "Safexp-CarButton1-v0"
-
-data_dir = "expert_data_" + env_name + ".npz"
+seed = 2
+data_dir = "data/expert_data_" + env_name + "_s" + str(seed) + ".npz"
 
 env = gym.make(env_name)
 
@@ -32,8 +32,12 @@ env_dict = {
         'dtype': np.float32,
     }
 }
+if "Safe" in env.spec.id:
+        env_dict["cost"] = {'dtype': np.float32}
 
-buffer_size = 1000
+buffer_size = 20000
 cpp_buffer = ReplayBuffer(buffer_size, env_dict)
 
 cpp_buffer.load_transitions(data_dir)
+
+import pdb;pdb.set_trace()

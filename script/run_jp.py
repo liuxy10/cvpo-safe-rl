@@ -79,8 +79,9 @@ if __name__ == '__main__':
             },
         "Safexp-CarButton1-v0":
             {
-                4: "data/Safexp-CarButton1-v0_cost_10/cvpo_epoch_600_layouts_1/cvpo_epoch_600_layouts_1_s2/model_save/model.pt",
+                4: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
                 2: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
+                0: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
                 3: "data/Safexp-CarButton1-v0_cost_10/bc_epoch_150_layouts_1/bc_epoch_150_layouts_1_s2/model_save/model.pt",
             },
         "Safexp-CarPush1-v0":
@@ -98,6 +99,8 @@ if __name__ == '__main__':
             "sac_epoch_150_new_env_s0/model_save/model.pt",
     }
     assert args.env in model_dirs, f"No pretrained model for {args.env}!"
+    config[args.policy]["worker_config"]["use_jp_decay"] = config[args.policy]["use_jp_decay"]
+    config[args.policy]["worker_config"]["decay_epoch"] = config[args.policy]["decay_epoch"]
     config[args.policy]["worker_config"]["model_dir"] = model_dirs[args.env]
     config[args.policy]["worker_config"]["load_critic"] = config["load_critic"]
     config[args.policy]["worker_config"]["load_actor"] = config["load_actor"]
