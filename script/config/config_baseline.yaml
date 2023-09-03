@@ -74,7 +74,8 @@ sac_lag: &SAC
     # actor critic model_config:
     hidden_sizes: *HIDDEN_SIZES
     # Entropy regularization coefficient.
-    alpha: 0.0085
+    # alpha: 0.0085
+    alpha: 0.05
     gamma: *GAMMA
     polyak: *POLYAK
     num_q: *NUM_Q
@@ -86,6 +87,7 @@ sac_lag: &SAC
 
 #SAC Lagrangian + Jump Start config
 sac_lag_jp: *SAC
+sac_lag_fixed: *SAC
 
 # SAC policy config
 sac: *SAC

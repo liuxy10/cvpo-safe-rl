@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 # from memory_profiler import profile
 
-from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO, BC, CVPOMQL, CVPOIQL
+from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO, BC, CVPOMQL, CVPOIQL, SACLagFixed
 from safe_rl.util.logger import EpochLogger, setup_logger_kwargs
 from safe_rl.util.run_util import load_config, setup_eval_configs
 from safe_rl.util.torch_util import export_device_env_variable, seed_torch
@@ -42,6 +42,8 @@ class Runner:
         "bc": (BC, False, OffPolicyWorker),
         "cvpo_mql_jp": (CVPOMQL, False, JumpStartOffPolicyWorker),
         "cvpo_iql_jp": (CVPOIQL, False, JumpStartOffPolicyWorker),
+        "cvpo_iql": (CVPOIQL, False, OffPolicyWorker),
+        "sac_lag_fixed": (SACLagFixed, False, OffPolicyWorker),
     }
 
     def __init__(self,
@@ -112,7 +114,8 @@ class Runner:
         # self.env = gym.make(env, config=env_config)
         self.env = gym.make(env)
         self.env.seed(kwarg["env_seed"])
-        self.env.set_num_different_layouts(kwarg["env_layout_nums"])
+        if "Safexp" in env:
+            self.env.set_num_different_layouts(kwarg["env_layout_nums"])
         self.timeout_steps = self.env._max_episode_steps if timeout_steps == -1 else timeout_steps
 
         # Set up logger and save configuration
@@ -153,7 +156,7 @@ class Runner:
             if self.worker_config["load_critic"]:
                 self.policy.load_critic(model_dir)
                 print("Successfully Loaded Critic!\n")
-        if self.worker_config["load_actor"]:
+        if self.worker_config.get("load_actor", False):
             model_dir = self.worker_config["model_dir"][self.env.get_seed()]
             self.policy.load_actor(model_dir)
         self.add_bc_loss = self.worker_config.get("add_bc_loss", False)

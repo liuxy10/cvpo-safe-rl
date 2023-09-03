@@ -44,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--env_layout_nums', '-eln', type=int, default=1)
     parser.add_argument('--policy', '-p', type=str, default='cvpo')
     parser.add_argument('--pretrain_dir', '-pre', type=str, default=None)
+    parser.add_argument('--model_dir', '-md', type=str, default=None)
     parser.add_argument('--load_dir', '-d', type=str, default=None)
     parser.add_argument('--mode', '-m', type=str, default='train')
     parser.add_argument('--seed', '-s', type=int, default=0)
@@ -98,10 +99,11 @@ if __name__ == '__main__':
             "data/Safexp-CarPush2-v0_cost_10/sac_epoch_150_new_env/" +
             "sac_epoch_150_new_env_s0/model_save/model.pt",
     }
-    assert args.env in model_dirs, f"No pretrained model for {args.env}!"
+    # assert args.env in model_dirs, f"No pretrained model for {args.env}!"
     config[args.policy]["worker_config"]["use_jp_decay"] = config[args.policy]["use_jp_decay"]
     config[args.policy]["worker_config"]["decay_epoch"] = config[args.policy]["decay_epoch"]
-    config[args.policy]["worker_config"]["model_dir"] = model_dirs[args.env]
+    config[args.policy]["worker_config"]["model_dir"] = model_dirs[args.env] if config["model_dir"] is None else config["model_dir"]
+
     config[args.policy]["worker_config"]["load_critic"] = config["load_critic"]
     config[args.policy]["worker_config"]["load_actor"] = config["load_actor"]
     config[args.policy]["worker_config"]["add_bc_loss"] = (

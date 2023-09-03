@@ -97,6 +97,7 @@ class JumpStartOffPolicyWorker:
         for i in range(self.timeout_steps):
             # TODO: Change here for jump start
             if i-last_steps <= self.guidance_steps:
+                # TODO: Add DT here
                 action, _ = self.expert[idx].act(obs, 
                                             deterministic=False,
                                             with_logprob=False)

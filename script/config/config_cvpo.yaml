@@ -4,7 +4,7 @@ env: 'Safexp-CarButton1-v0'
 # This is a environment-specific parameter. Determine this carefully based on your gym env.
 # If this is -1, it will be based on the env._max_episode_steps
 timeout_steps: 400
-cost_limit: &COST_LIM 20
+cost_limit: &COST_LIM 10
 seed: 0
 mode: 'train'
 
@@ -68,3 +68,4 @@ cvpo: &CVPO
 cvpo_jp: *CVPO
 cvpo_mql_jp: *CVPO
 cvpo_iql_jp: *CVPO
+cvpo_iql: *CVPO

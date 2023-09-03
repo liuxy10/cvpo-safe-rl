@@ -9,3 +9,4 @@ from .cvpo import CVPO
 from .bc import BC
 from .cvpo_mql import CVPOMQL
 from .cvpo_iql import CVPOIQL
+from .sac_lag_fixed import SACLagFixed

@@ -71,8 +71,8 @@ class OffPolicyWorker:
         Interact with the environment to collect data
         '''
         obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
-        if self.last_obs_reset is not None and self.env.num_different_layouts == 1:
-            assert np.sum(obs - self.last_obs_reset) < 1e-6
+        # if self.last_obs_reset is not None and self.env.num_different_layouts == 1:
+        #     assert np.sum(obs - self.last_obs_reset) < 1e-6
         self.last_obs_reset = obs
         epoch_steps = 0
         terminal_freq = 0

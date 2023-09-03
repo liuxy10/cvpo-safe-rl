@@ -554,6 +554,11 @@ class CVPOIQL(Policy):
             # Bellman backup for Q functions
             with torch.no_grad():
                 next_v_c = self.critic_forward(self.value_c, obs_next)
+                # # Target actions come from *current* policy
+                # _, logp_a_next, pi_dist = self.actor_forward(obs_next)
+                # act_next = pi_dist.sample()
+                # # Target Q-values
+                # next_v_c, _ = self.critic_forward(self.qc_targ, obs_next, act_next)
                 backup = cost + self.gamma * next_v_c
                 assert backup.shape == q_list[0].shape
             # MSE loss against Bellman backup
