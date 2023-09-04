@@ -10,6 +10,7 @@ from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lag
 from safe_rl.util.logger import EpochLogger, setup_logger_kwargs
 from safe_rl.util.run_util import load_config, setup_eval_configs
 from safe_rl.util.torch_util import export_device_env_variable, seed_torch
+from safe_rl.util import js_utils
 from safe_rl.worker import OffPolicyWorker, OnPolicyWorker, JumpStartOffPolicyWorker
 
 try:
@@ -147,10 +148,25 @@ class Runner:
         if "jp" in policy.lower():
             self.worker_config["expert_policies"] = {} 
             dummy_logger = EpochLogger(output_dir="data/test", use_tensor_board=False)
-
-            model_dir = self.worker_config["model_dir"][self.env.get_seed()]
-            expert = BC(self.env, dummy_logger)
-            expert.load_model(model_dir)
+            if isinstance(self.worker_config["model_dir"], dict):
+                model_dir = self.worker_config["model_dir"][self.env.get_seed()]
+            else:
+                model_dir = self.worker_config["model_dir"]
+            if self.worker_config["use_dt_guide"]:
+                loaded_stats = js_utils.load_demo_stats(
+                    path=model_dir
+                )
+                obs_mean, obs_std, reward_scale, target_return_init = loaded_stats
+                self.worker_config["obs_mean"] = obs_mean
+                self.worker_config["obs_std"] = obs_std
+                self.worker_config["reward_scale"] = reward_scale
+                self.worker_config["target_return_init"] = target_return_init
+                expert = js_utils.load_transformer(
+                    model_dir=model_dir, device=self.worker_config["device"]
+                )
+            else:
+                expert = BC(self.env, dummy_logger)
+                expert.load_model(model_dir)
             self.worker_config["expert_policies"][self.env.get_seed()] = expert 
 
             if self.worker_config["load_critic"]:

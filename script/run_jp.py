@@ -44,6 +44,8 @@ if __name__ == '__main__':
     parser.add_argument('--env_layout_nums', '-eln', type=int, default=1)
     parser.add_argument('--policy', '-p', type=str, default='cvpo')
     parser.add_argument('--pretrain_dir', '-pre', type=str, default=None)
+    parser.add_argument('--guidance_timesteps', '-gt', type=int, default=int(1e6))
+    parser.add_argument('--use_dt_guide', action="store_true")
     parser.add_argument('--model_dir', '-md', type=str, default=None)
     parser.add_argument('--load_dir', '-d', type=str, default=None)
     parser.add_argument('--mode', '-m', type=str, default='train')
@@ -102,7 +104,16 @@ if __name__ == '__main__':
     # assert args.env in model_dirs, f"No pretrained model for {args.env}!"
     config[args.policy]["worker_config"]["use_jp_decay"] = config[args.policy]["use_jp_decay"]
     config[args.policy]["worker_config"]["decay_epoch"] = config[args.policy]["decay_epoch"]
-    config[args.policy]["worker_config"]["model_dir"] = model_dirs[args.env] if config["model_dir"] is None else config["model_dir"]
+    config[args.policy]["worker_config"]["model_dir"] = (
+        model_dirs[args.env] 
+        if config["model_dir"] is None 
+        else config["model_dir"]
+    )
+    config[args.policy]["worker_config"]["use_dt_guide"] = config["use_dt_guide"]
+    config[args.policy]["worker_config"]["device"] = config["device"]
+    config[args.policy]["worker_config"]["guidance_timesteps"] = (
+        config["guidance_timesteps"]
+    )
 
     config[args.policy]["worker_config"]["load_critic"] = config["load_critic"]
     config[args.policy]["worker_config"]["load_actor"] = config["load_actor"]

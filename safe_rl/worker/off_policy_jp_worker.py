@@ -24,32 +24,40 @@ class JumpStartOffPolicyWorker:
         self.env = env
         self.policy = policy
         self.expert = kwargs["expert_policies"]
+        self.use_dt_guide = kwargs["use_dt_guide"]
+        if self.use_dt_guide:
+            self.obs_mean = kwargs["obs_mean"]
+            self.obs_std = kwargs["obs_std"]
+            self.reward_scale = kwargs["reward_scale"]
+            self.target_return_init = kwargs["target_return_init"]
+            self.device = kwargs["device"]
+        self.guidance_timesteps = kwargs["guidance_timesteps"]
         self.logger = logger
         self.batch_size = batch_size
         self.timeout_steps = timeout_steps
+        self.num_timesteps = 0  # Total num of env steps
 
         self.use_jp_decay = use_jp_decay
         self.decay_epoch = decay_epoch
-        self.reset_guidance_steps(0)
 
-        obs_dim = env.observation_space.shape[0]
-        act_dim = env.action_space.shape
+        self.obs_dim = env.observation_space.shape[0]
+        self.act_dim = env.action_space.shape
 
         env_dict = {
             'act': {
                 'dtype': np.float32,
-                'shape': act_dim
+                'shape': self.act_dim
             },
             'done': {
                 'dtype': np.float32,
             },
             'obs': {
                 'dtype': np.float32,
-                'shape': obs_dim
+                'shape': self.obs_dim
             },
             'obs2': {
                 'dtype': np.float32,
-                'shape': obs_dim
+                'shape': self.obs_dim
             },
             'rew': {
                 'dtype': np.float32,
@@ -73,11 +81,12 @@ class JumpStartOffPolicyWorker:
         # for i in range(warmup_steps // 2):
         #     self.policy.learn_on_batch(self.get_sample())
 
-    def reset_guidance_steps(self, epoch):
-        if self.use_jp_decay:
-            self.guidance_steps = (self.timeout_steps-1) * np.exp(-5. * epoch / self.decay_epoch)
-        else:
-            self.guidance_steps = np.random.randint(1, self.timeout_steps-1)
+    def get_guide_probability(self):
+        if self.num_timesteps > self.guidance_timesteps:
+            return 0.
+        prob_start = 0.9
+        prob = prob_start * np.exp(-5. * self.num_timesteps / self.guidance_timesteps)
+        return prob
 
     def work(self, warmup=False):
         '''
@@ -88,6 +97,12 @@ class JumpStartOffPolicyWorker:
         if self.last_obs_reset is not None and self.env.num_different_layouts == 1:
             assert np.sum(obs - self.last_obs_reset) < 1e-6
         self.last_obs_reset = obs
+        self.hist_obs = obs.reshape(1, self.obs_dim)
+        self.hist_ac= np.zeros((0, self.act_dim[0]))
+        self.hist_re = np.zeros(0)
+        if self.use_dt_guide:
+            self.target_return = np.array([[self.target_return_init]])
+        self.timesteps = np.zeros((1, 1))
 
         epoch_steps = 0
         terminal_freq = 0
@@ -95,12 +110,44 @@ class JumpStartOffPolicyWorker:
         last_steps = -1
         q_expert, q_train = [], []
         for i in range(self.timeout_steps):
-            # TODO: Change here for jump start
-            if i-last_steps <= self.guidance_steps:
-                # TODO: Add DT here
-                action, _ = self.expert[idx].act(obs, 
-                                            deterministic=False,
-                                            with_logprob=False)
+            self.hist_ac = np.concatenate(
+                [self.hist_ac, np.zeros((1, self.act_dim[0]))], axis=0
+            )
+            self.hist_re = np.concatenate([self.hist_re, np.zeros(1)])
+            guide_prob = self.get_guide_probability()
+            use_guide = np.random.choice([False, True], p=[1-guide_prob, guide_prob])
+            if use_guide:
+                if self.use_dt_guide:
+                    hist_obs = torch.tensor(
+                        self.hist_obs, dtype=torch.float32, device=self.device
+                    )
+                    hist_ac = torch.tensor(
+                        self.hist_ac, dtype=torch.float32, device=self.device
+                    )
+                    hist_re = torch.tensor(
+                        self.hist_re, dtype=torch.float32, device=self.device
+                    )
+                    target_return = torch.tensor(
+                        self.target_return, dtype=torch.float32, device=self.device
+                    )
+                    timesteps = torch.tensor(
+                        self.timesteps, dtype=torch.long, device=self.device
+                    )
+                    action = self.expert[idx].get_action(
+                        (hist_obs - self.obs_mean) / self.obs_std,
+                        hist_ac,
+                        hist_re,
+                        target_return,
+                        timesteps,
+                    )
+                    action = action.detach().cpu().numpy()
+                    self.hist_ac[-1] = action
+                else:
+                    action, _ = self.expert[idx].act(
+                        obs, 
+                        deterministic=False,
+                        with_logprob=False
+                    )
                 with torch.no_grad():
                     _, q_list = self.policy.critic.predict(to_tensor(obs), to_tensor(action))
                 q_expert += q_list
@@ -116,6 +163,19 @@ class JumpStartOffPolicyWorker:
                                             with_logprob=False)
                 
             obs_next, reward, done, info = self.env.step(action)
+            self.num_timesteps += 1
+
+            self.hist_obs = np.concatenate(
+                [self.hist_obs, obs_next.reshape(1, -1)], axis=0)
+            assert len(self.hist_obs.shape) == 2
+            self.hist_re[-1] = reward
+            pred_return = self.target_return[0,-1] - (reward/self.reward_scale)
+            self.target_return = np.concatenate(
+                [self.target_return, pred_return.reshape(1, 1)], axis=1)
+            t = self.timesteps[0, -1] + 1
+            self.timesteps = np.concatenate(
+                [self.timesteps, np.ones((1, 1)) * t], axis=1)
+            
             # Ignore the "done" signal if it comes from hitting the time
             # horizon (that is, when it's an artificial terminal signal
             # that isn't based on the agent's state)
@@ -126,8 +186,6 @@ class JumpStartOffPolicyWorker:
 
             if done:
                 done_freq += 1
-                # self.reset_guidance_steps(i - last_steps + 1)
-                # last_steps = i
 
 
             if "cost" in info:
@@ -156,6 +214,14 @@ class JumpStartOffPolicyWorker:
                                   EpLen=ep_len,
                                   tab="worker")
                 obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
+                
+                self.hist_obs = obs.reshape(1, self.obs_dim)
+                self.hist_ac= np.zeros((0, self.act_dim[0]))
+                self.hist_re = np.zeros(0)
+                if self.use_dt_guide:
+                    self.target_return = np.array([[self.target_return_init]])
+                self.timesteps = np.zeros((1, 1))
+
                 idx = self.env.get_seed()
                 # break
         q_expert = to_ndarray(torch.hstack(q_expert)) if q_expert else 0
@@ -168,7 +234,6 @@ class JumpStartOffPolicyWorker:
                           Q_Expert=q_expert,
                           Q_Train=q_train,
                           Q_ExpertMinusTrain=q_expert.mean()-q_train.mean(),
-                          GuideFraction=self.guidance_steps/ep_len,
                           tab="worker")
         return epoch_steps
 
@@ -219,6 +284,3 @@ class JumpStartOffPolicyWorker:
 
     def clear_buffer(self):
         self.cpp_buffer.clear()
-
-    def post_epoch_process(self, epoch):
-        self.reset_guidance_steps(epoch)

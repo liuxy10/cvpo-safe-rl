@@ -23,6 +23,8 @@ data_dir: null
 load_dir: null
 pretrain_dir: null
 verbose: True
+use_dt_guide: False
+guidance_timesteps: 1000000
 
 sample_episode_num: 20
 episode_rerun_num: 40
