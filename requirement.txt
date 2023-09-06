@@ -1,5 +1,4 @@
-cpprb==10.1.1
-easydict==1.9
+
 matplotlib
 gym
 joblib
@@ -7,7 +6,7 @@ numpy
 pandas
 pillow
 pynput==1.7.3
-pyyaml==5.4.1
+
 scikit-image
 scipy
 seaborn==0.11.2
@@ -19,3 +18,9 @@ tensorboardx>=2.4
 ray
 ray[tune]
 tqdm~=4.62.3
+
+cpprb
+easydict
+pyyaml
+
+

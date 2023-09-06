@@ -13,6 +13,12 @@ from safe_rl.util.torch_util import export_device_env_variable, seed_torch
 from safe_rl.util import js_utils
 from safe_rl.worker import OffPolicyWorker, OnPolicyWorker, JumpStartOffPolicyWorker
 
+import sys
+sys.path.append("/home/xinyi/src/safe-sb3/examples/metadrive/training")
+from utils import AddCostToRewardEnv
+
+
+
 try:
     import bullet_safety_gym
 except ImportError:
@@ -113,8 +119,12 @@ class Runner:
         #     "num_different_layouts": kwarg["env_layout_nums"],
         # }
         # self.env = gym.make(env, config=env_config)
-        self.env = gym.make(env)
-        self.env.seed(kwarg["env_seed"])
+        if env == "waymo":
+            self.env = AddCostToRewardEnv(kwarg["waymo_config"])
+        else:
+
+            self.env = gym.make(env)
+            self.env.seed(kwarg["env_seed"])
         if "Safexp" in env:
             self.env.set_num_different_layouts(kwarg["env_layout_nums"])
         self.timeout_steps = self.env._max_episode_steps if timeout_steps == -1 else timeout_steps

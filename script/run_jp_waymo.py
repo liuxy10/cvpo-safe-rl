@@ -2,16 +2,13 @@ import os.path as osp
 
 from safe_rl.runner import Runner
 from safe_rl.util.run_util import load_config
-from metadrive.policy.replay_policy import ReplayEgoCarPolicy, PMKinematicsEgoPolicy
-import sys
-sys.path.append("/home/xinyi/src/safe-sb3/examples/metadrive/training")
-from utils import AddCostToRewardEnv
+from metadrive.policy.replay_policy import PMKinematicsEgoPolicy
 
 
 CONFIG_DIR = osp.join(osp.dirname(osp.realpath(__file__)), "config")
 
 
-class SafetyGymRunner(Runner):
+class MetadriveRunner(Runner):
 
     def eval(self, epochs=10, sleep=0.01, render=True):
         '''
@@ -45,7 +42,7 @@ def gen_data_dir_name(config: dict):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', '-e', type=str, default='Safexp-PointButton1-v0')
+    parser.add_argument('--env', '-e', type=str, default='waymo')
     parser.add_argument('--env_layout_nums', '-eln', type=int, default=1)
     parser.add_argument('--policy', '-p', type=str, default='cvpo')
     parser.add_argument('--pretrain_dir', '-pre', type=str, default=None)
@@ -64,6 +61,12 @@ if __name__ == '__main__':
     parser.add_argument('--load_critic', action="store_true")
     parser.add_argument('--load_actor', action="store_true")
     parser.add_argument('--bc_loss', action="store_true")
+
+    parser.add_argument('--lamb', '-lm', type=float, default=1.)
+    parser.add_argument('--num_of_scenarios', type=int, default=10000)
+    parser.add_argument('--pkl_dir', '-pkl', type=str,
+                        default='/home/xinyi/src/data/metadrive/pkl_9')
+    
     args = parser.parse_args()
 
     args_dict = vars(args)
@@ -105,6 +108,8 @@ if __name__ == '__main__':
         "Safexp-CarPush2-v0":
             "data/Safexp-CarPush2-v0_cost_10/sac_epoch_150_new_env/" +
             "sac_epoch_150_new_env_s0/model_save/model.pt",
+        "waymo":
+            ""
     }
     # assert args.env in model_dirs, f"No pretrained model for {args.env}!"
     config[args.policy]["worker_config"]["use_jp_decay"] = config[args.policy]["use_jp_decay"]
@@ -127,27 +132,27 @@ if __name__ == '__main__':
     config[args.policy]["worker_config"]["expert_data_dir"] = (
         "data/expert_data_" + args.env + "_s2.npz"
     )
-
     if args.env == "waymo":
-        config['env_config'] = {
-        "manual_control": False,
-        "no_traffic": False,
-        "agent_policy": PMKinematicsEgoPolicy,
-        "waymo_data_directory":args['pkl_dir'],
-        "case_num": 10000,
-        "start_seed": 0,
-        "physics_world_step_size": 1/10, # have to be specified each time we use waymo environment for training purpose
-        "use_render": False,
-        "reactive_traffic": False,
-               "vehicle_config": dict(
-               # no_wheel_friction=True,
-               lidar=dict(num_lasers=80, distance=50, num_others=4), # 120
-               lane_line_detector=dict(num_lasers=12, distance=50), # 12
-               side_detector=dict(num_lasers=20, distance=50)) # 160,
+        config['waymo_config'] = {
+            "manual_control": False,
+            "no_traffic": False,
+            "agent_policy": PMKinematicsEgoPolicy,
+            "start_seed": 0,
+            "waymo_data_directory": args.pkl_dir,
+            "case_num": args.num_of_scenarios,
+            # have to be specified each time we use waymo environment for training purpose
+            "physics_world_step_size": 1/10,
+            "use_render": False,
+            "horizon": 90/5,
+            "reactive_traffic": False,
+            "vehicle_config": dict(
+                # no_wheel_friction=True,
+                lidar=dict(num_lasers=80, distance=50, num_others=4),  # 120
+                lane_line_detector=dict(num_lasers=12, distance=50),  # 12
+                side_detector=dict(num_lasers=20, distance=50))  # 160,
         }
-
     if "Safety" in args.env:
-        runner = SafetyGymRunner(**config)
+        runner = MetadriveRunner(**config)
     else:
         runner = Runner(**config)
     

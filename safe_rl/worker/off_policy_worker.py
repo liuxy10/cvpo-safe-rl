@@ -6,6 +6,10 @@ from safe_rl.policy.base_policy import Policy
 from safe_rl.util.logger import EpochLogger
 from safe_rl.util.torch_util import to_tensor
 
+import sys
+sys.path.append("/home/xinyi/src/safe-sb3/examples/metadrive/training")
+from utils import AddCostToRewardEnv
+
 
 class OffPolicyWorker:
     r'''
@@ -49,9 +53,10 @@ class OffPolicyWorker:
                 'dtype': np.float32,
             }
         }
-        if "Safe" in env.spec.id:
-            self.SAFE_RL_ENV = True
-            env_dict["cost"] = {'dtype': np.float32}
+        if env.__class__ != AddCostToRewardEnv:
+            if "Safe" in env.spec.id:
+                self.SAFE_RL_ENV = True
+                env_dict["cost"] = {'dtype': np.float32}
         self.cpp_buffer = ReplayBuffer(buffer_size, env_dict)
         self.eval_max_rew = -float("inf")
 
