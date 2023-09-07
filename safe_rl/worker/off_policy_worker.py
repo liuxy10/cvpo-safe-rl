@@ -53,10 +53,10 @@ class OffPolicyWorker:
                 'dtype': np.float32,
             }
         }
-        if env.__class__ != AddCostToRewardEnv:
-            if "Safe" in env.spec.id:
-                self.SAFE_RL_ENV = True
-                env_dict["cost"] = {'dtype': np.float32}
+        # if env.__class__ != AddCostToRewardEnv:
+            # if "Safe" in env.spec.id:
+        self.SAFE_RL_ENV = True
+        env_dict["cost"] = {'dtype': np.float32}
         self.cpp_buffer = ReplayBuffer(buffer_size, env_dict)
         self.eval_max_rew = -float("inf")
 

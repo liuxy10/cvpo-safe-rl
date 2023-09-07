@@ -3,7 +3,7 @@ env: 'Safexp-CarButton1-v0'
 # Maximum steps per episode, use this to terminate one episode if it takes too many steps.
 # This is a environment-specific parameter. Determine this carefully based on your gym env.
 # If this is -1, it will be based on the env._max_episode_steps
-timeout_steps: 400
+timeout_steps: 90
 cost_limit: &COST_LIM 10
 seed: 0
 mode: 'train'
@@ -15,7 +15,7 @@ device_id: 0
 # if device is cpu, specify the thread num
 threads: 4
 policy: "cvpo"
-epochs: 600
+epochs: 125
 save_freq: 2
 exp_name: null
 # data dir to save the logger files
@@ -24,7 +24,7 @@ load_dir: null
 pretrain_dir: null
 verbose: True
 use_dt_guide: False
-guidance_timesteps: 1000000
+guidance_timesteps: 100000
 
 sample_episode_num: 20
 episode_rerun_num: 40
