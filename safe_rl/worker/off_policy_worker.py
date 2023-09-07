@@ -98,8 +98,7 @@ class OffPolicyWorker:
             terminal = done
             done = True if "goal_met" in info and info["goal_met"] else done
 
-            if done:
-                done_freq += 1
+            
 
             if "cost" in info:
                 cost = info["cost"]
@@ -116,6 +115,10 @@ class OffPolicyWorker:
                                     rew=reward,
                                     obs2=obs_next,
                                     done=done)
+            if done:
+                done_freq += 1
+                break # add break 
+
             ep_reward += reward
             ep_len += 1
             epoch_steps += 1
