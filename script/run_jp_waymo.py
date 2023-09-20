@@ -3,6 +3,7 @@ import os.path as osp
 from safe_rl.runner import Runner
 from safe_rl.util.run_util import load_config
 from metadrive.policy.replay_policy import PMKinematicsEgoPolicy
+from tqdm import tqdm
 
 
 CONFIG_DIR = osp.join(osp.dirname(osp.realpath(__file__)), "config")
@@ -18,6 +19,8 @@ def gen_exp_name(config: dict, suffix=None):
     name = config["policy"]
     for k in EXP_NAME_KEYS:
         name += '_' + EXP_NAME_KEYS[k] + '_' + str(config[k])
+    if config['use_dt_guide']:
+        name += '_use_dt_guide'
     return name + suffix
 
 
@@ -36,10 +39,10 @@ if __name__ == '__main__':
     parser.add_argument('--policy', '-p', type=str, default='cvpo')
     parser.add_argument('--pretrain_dir', '-pre', type=str, default=None)
     parser.add_argument('--guidance_timesteps', '-gt', type=int, default=int(1e6))
-    parser.add_argument('--use_dt_guide', action="store_true")
+    parser.add_argument('--use_dt_guide', '-dt', action="store_true")
     parser.add_argument('--model_dir', '-md', type=str, default=None)
-    parser.add_argument('--load_dir', '-d', type=str, default=None)
-    parser.add_argument('--mode', '-m', type=str, default='train')
+    parser.add_argument('--load_dir', '-d', type=str, default="data/waymo_cost_10/cvpo_epoch_2500_layouts_1_es_0/cvpo_epoch_2500_layouts_1_es_0_s0")
+    parser.add_argument('--mode', '-m', type=str, default='eval')
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--env_seed', '-es', type=int, default=0)
     parser.add_argument('--device', type=str, default="cpu")
@@ -50,9 +53,10 @@ if __name__ == '__main__':
     parser.add_argument('--load_critic', action="store_true")
     parser.add_argument('--load_actor', action="store_true")
     parser.add_argument('--bc_loss', action="store_true")
+    parser.add_argument('--save_fig_dir', type=str, default="./figs/")
 
     parser.add_argument('--lamb', '-lm', type=float, default=1.)
-    parser.add_argument('--num_of_scenarios', type=int, default=100)
+    parser.add_argument('--num_of_scenarios', type=int, default=10)
     parser.add_argument('--pkl_dir', '-pkl', type=str,
                         default='/home/xinyi/src/data/metadrive/pkl_9')
     
@@ -74,8 +78,7 @@ if __name__ == '__main__':
 
     model_dirs = {
         "waymo":
-            ""
-    }
+            '/home/xinyi/src/decision-transformer/gym/wandb/run-20230823_230743-3s6y7mzy'    }
     # assert args.env in model_dirs, f"No pretrained model for {args.env}!"
     config[args.policy]["worker_config"]["use_jp_decay"] = config[args.policy]["use_jp_decay"]
     config[args.policy]["worker_config"]["decay_epoch"] = config[args.policy]["decay_epoch"]
@@ -116,12 +119,12 @@ if __name__ == '__main__':
                 lane_line_detector=dict(num_lasers=12, distance=50),  # 12
                 side_detector=dict(num_lasers=20, distance=50))  # 160,
         }
+
     
     runner = Runner(**config)
     
     if args.mode == "train":
         runner.train()
-        if args.first_time:
-            runner.policy.save_params()
     else:
-        runner.eval(render=not args.no_render, sleep=args.sleep)
+        # runner.eval(render=not args.no_render, sleep=args.sleep)
+        runner.eval(render=False, sleep=args.sleep, epochs= 100)

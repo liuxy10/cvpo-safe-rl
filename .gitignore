@@ -11,8 +11,9 @@ envs/safety-gym/mujoco200_linux
 *vscode
 
 */figure/*
+figs/*
 data/*
-
+*.json
 
 **/**.pt
 # C extensions

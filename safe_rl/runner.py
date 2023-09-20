@@ -1,9 +1,11 @@
 import time
 from copy import deepcopy
 import gym
-
+import numpy as np
 import torch
-from tqdm import tqdm
+# from tqdm import tqdm
+import tqdm
+import json
 # from memory_profiler import profile
 
 from safe_rl.policy import DDPG, SAC, TD3, SACLagrangian, DDPGLagrangian, TD3Lagrangian, CVPO, BC, CVPOMQL, CVPOIQL, SACLagFixed
@@ -13,9 +15,13 @@ from safe_rl.util.torch_util import export_device_env_variable, seed_torch
 from safe_rl.util import js_utils
 from safe_rl.worker import OffPolicyWorker, OnPolicyWorker, JumpStartOffPolicyWorker
 
+import os
 import sys
 sys.path.append("/home/xinyi/src/safe-sb3/examples/metadrive/training")
+sys.path.append("/home/xinyi/src/safe-sb3/examples/metadrive/testing")
 from utils import AddCostToRewardEnv
+from visualize import plot_waymo_vs_pred
+
 
 
 
@@ -89,7 +95,7 @@ class Runner:
             model_path, env, policy, timeout_steps, policy_config = setup_eval_configs(
                 load_dir)
             self._eval_mode_init(env, seed, model_path, policy, timeout_steps,
-                                 policy_config)
+                                 policy_config, **kwarg)
         else:
             self._train_mode_init(env, seed, exp_name, policy, timeout_steps, data_dir,
                                   **kwarg)
@@ -201,9 +207,17 @@ class Runner:
 
 
     def _eval_mode_init(self, env, seed, model_path, policy, timeout_steps,
-                        policy_config):
+                        policy_config,**kwarg):
         # Instantiate environment
-        self.env = gym.make(env)
+        if env == 'waymo':
+            waymo_test_config = kwarg["waymo_config"].copy()
+            waymo_test_config['start_seed'] = 10000
+            waymo_test_config['case_num'] = 100
+            self.env = AddCostToRewardEnv(waymo_test_config)
+            self.eval_fn =  "js-cvpo" if kwarg['use_dt_guide'] else "cvpo"
+            self.save_fig_dir =  kwarg['save_fig_dir'] 
+        else:
+            self.env = gym.make(env)
         # self.env.seed(seed)
         self.timeout_steps = self.env._max_episode_steps if timeout_steps == -1 else timeout_steps
 
@@ -285,14 +299,26 @@ class Runner:
             render = False
             self.env.render()
         total_steps = 0
+
+        start_id = int(self.env.config['start_case_index'])
+        episode_rewards = []
+        episode_costs = []
+        episode_lengths = []
+        episode_success_rates = []
+
+
         for epoch in range(epochs):
-            obs, ep_reward, ep_len, ep_cost = self.env.reset(), 0, 0, 0
+            
+            obs = self.env.reset(force_seed = start_id + epoch)
+            ep_cost, current_reward, current_length = 0, 0, 0
             if render:
                 self.env.render()
             for i in range(self.timeout_steps):
                 res = self.policy.act(obs, deterministic=True, with_logprob=False)
                 action = res[0]
                 obs_next, reward, done, info = self.env.step(action)
+                current_reward += reward
+                current_length += 1
                 if render:
                     self.env.render()
                 time.sleep(sleep)
@@ -300,17 +326,57 @@ class Runner:
                 if "cost" in info:
                     ep_cost += info["cost"]
 
-                ep_reward += reward
-                ep_len += 1
                 total_steps += 1
                 obs = obs_next
 
                 if done:
+                    episode_rewards.append(current_reward)
+                    episode_costs.append(ep_cost)
+                    episode_lengths.append(current_length)
+                    episode_success_rates.append(info['arrive_dest'])
                     break
-            self.logger.store(EpRet=ep_reward, EpLen=ep_len, EpCost=ep_cost, tab="eval")
+        
+        mean_reward = np.mean(episode_rewards)
+        std_reward = np.std(episode_rewards)
+        mean_cost = np.mean(episode_costs)
+        std_cost = np.std(episode_costs)
+        mean_success_rate = np.mean(episode_success_rates)
 
-            # Log info about epoch
-            self._log_metrics(epoch, total_steps)
+        fn =  self.eval_fn
+        header = "-"*10+" Evaluation of " + fn + "-"*10
+
+            
+        print(header)
+        print("mean_reward = ", mean_reward)
+        print("std_reward = ",std_reward)
+        print("mean_cost = ", mean_cost)
+        print("std_cost = ",std_cost)
+        print("mean_success_rate = ", mean_success_rate)
+
+        exp_result ={
+            "exp_name": fn,
+            "mean_reward": mean_reward,
+            "std_reward": std_reward,
+            "mean_cost": mean_cost,
+            "std_cost": std_cost,
+            "mean_success_rate": mean_success_rate
+        }
+        json_path = fn + ".json"
+
+        # Save the dictionary as a JSON config file
+        with open(json_path, "w") as json_file:
+            json.dump(exp_result, json_file, indent=4)      
+        
+        for seed in tqdm.tqdm(range(  start_id,   start_id + epoch)):
+            plot_waymo_vs_pred(self.env, 
+                            self.policy, 
+                            seed, 
+                            fn, 
+                            savefig_dir = os.path.join(self.save_fig_dir, fn), 
+                            end_eps_when_done = True)
+
+        
+
 
     def _log_metrics(self, epoch, total_steps, time=None, verbose=True):
         self.logger.log_tabular('CostLimit', self.cost_limit)
